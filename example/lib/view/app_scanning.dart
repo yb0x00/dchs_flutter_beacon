@@ -9,6 +9,8 @@ import 'package:dchs_flutter_beacon/dchs_flutter_beacon.dart';
 import '/controller/requirement_state_controller.dart';
 import 'package:get/get.dart';
 
+import 'package:permission_handler/permission_handler.dart';
+
 class TabScanning extends StatefulWidget {
   const TabScanning({super.key});
 
@@ -40,6 +42,30 @@ class TabScanningState extends State<TabScanning> {
   }
 
   initScanBeacon() async {
+    // iOS에서 권한과 서비스 상태를 확실히 체크하는 로직 추가
+    // initializeScanning 전에 권한을 확인하고, 권한이 없을 경우 사용자에게 요청합니다.
+    if (!controller.authorizationStatusOk ||
+        !controller.locationServiceEnabled ||
+        !controller.bluetoothEnabled) {
+      print('권한 또는 서비스 상태가 불충분하여 스캔을 시작할 수 없습니다. 권한 요청을 시도합니다.');
+      
+      // 권한을 요청합니다.
+      final locationStatus = await Permission.locationAlways.request();
+      final bluetoothStatus = await Permission.bluetoothScan.request();
+
+      if (locationStatus.isGranted && bluetoothStatus.isGranted) {
+        print('권한 요청이 성공했습니다. 스캔을 다시 시도합니다.');
+        // 권한이 부여되면 다시 스캔을 시작합니다.
+        initScanBeacon();
+      } else {
+        print('권한이 거부되었습니다. 스캔을 시작할 수 없습니다.');
+        return;
+      }
+      return;
+    }
+
+    await flutterBeacon.initializeScanning;
+
     await flutterBeacon.setScanPeriod(1000);
     await flutterBeacon.setBetweenScanPeriod(500);
     await flutterBeacon.setUseTrackingCache(true);
@@ -49,7 +75,7 @@ class TabScanningState extends State<TabScanning> {
     await flutterBeacon.setBackgroundBetweenScanPeriod(500);
 
     //await flutterBeacon.setEnableScheduledScanJobs(true);
-
+    /*
     await flutterBeacon.initializeScanning;
     if (!controller.authorizationStatusOk ||
         !controller.locationServiceEnabled ||
@@ -59,7 +85,7 @@ class TabScanningState extends State<TabScanning> {
           'locationServiceEnabled=${controller.locationServiceEnabled}, '
           'bluetoothEnabled=${controller.bluetoothEnabled}');
       return;
-    }
+    }*/
     var regions = <Region>[];
     if (Platform.isIOS) {
       regions = <Region>[
